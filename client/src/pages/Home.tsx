@@ -301,7 +301,7 @@ export default function Home() {
                         </span>
                         <span className="prize-anchor-progress">
                           {allDone
-                            ? "本轮全部完成！点击领取 🎊"
+                            ? "奖励已发放 🎊 · 今日 " + completedRounds + " / 5 轮"
                             : `本轮已完成 ${completedCount} / 5 环 · 今日 ${completedRounds} / 5 轮`}
                         </span>
                       </div>
@@ -341,12 +341,19 @@ export default function Home() {
 
                         {/* 去完成按钮：根据状态显示不同文案，用 disabled 属性控制 */}
                         {focusedIsDone ? (
-                          <Button className="go-play-btn go-play-done" disabled>✓ 本环已完成</Button>
+                          <Button className="go-play-btn go-play-done" disabled>✔ 本环已完成</Button>
                         ) : focusedIsLocked ? (
                           <Button className="go-play-btn go-play-locked" disabled>🔒 请先完成第 {activeRingId} 环</Button>
                         ) : (
                           <Button className="go-play-btn" disabled={!canGoComplete} onClick={handleGoComplete}>
                             去完成
+                          </Button>
+                        )}
+
+                        {/* 全部完成时显示开启下一轮 */}
+                        {allDone && (
+                          <Button className="next-round-btn" onClick={handleRestart}>
+                            开启下一轮 →
                           </Button>
                         )}
 

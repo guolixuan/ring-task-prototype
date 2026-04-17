@@ -1128,6 +1128,20 @@
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
+.next-round-btn {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, #f5c842, #d4850a);
+  border: none;
+  color: #3a1a08;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(200, 120, 0, 0.5);
+  animation: prize-glow-done 1.8s ease-in-out infinite;
+}
+
 .task-reward-card {
   padding: 0.65rem 1rem;
   border-radius: 0.75rem;
