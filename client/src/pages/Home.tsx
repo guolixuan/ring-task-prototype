@@ -7,7 +7,8 @@ import { ArrowLeft, RotateCw, RefreshCw, Swords, Trophy, X, Coins } from "lucide
 
 import { Button } from "@/components/ui/button";
 
-const lobbyPendantImage = "/pendant.png";
+const lobbyPendantImage =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/pendant_c4abde94.png";
 const glowOrnament =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/ring-glow-ornament-Dt49yWpi8Yg2G6645sLada.webp";
 
