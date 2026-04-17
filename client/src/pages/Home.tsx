@@ -1,541 +1,479 @@
 /*
  * 设计哲学：新中式赛博宫灯界面。
- * 当前页面必须始终强化“红金庆典、环状叙事、即时反馈”三项原则：
- * 1. 大厅是主舞台，挂件必须成为第一视觉中心；
- * 2. 任务详情必须清楚展示 1-5 环进度与当前环状态；
- * 3. 去完成后的反馈必须具备明显的任务推进感，而不是静态跳页。
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  Circle,
-  Coins,
-  Gift,
-  Sparkles,
-  Star,
-  Swords,
-  Trophy,
-  X,
-} from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, RotateCw, RefreshCw, Swords, Trophy, X, Coins } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const lobbyPendantImage =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/Gemini_Generated_Image_93cngi93cngi93cn_7641f96b.webp";
-const detailReferenceImage =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/57b2c53a-ade6-4569-b5bc-27c9982d265c_8acf9b6e.png";
-const mainStageBackground =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/ring-bg-main-CLLNJdM7fLnaXhJ4zNtBqv.webp";
-const gameplayBackground =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/ring-bg-gameplay-VWXcXkz6i2ybA8ybgJHcLZ.webp";
+const lobbyPendantImage = "/pendant.png";
 const glowOrnament =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663532081903/QkUdLPWPqxs35uGJzRzmcR/ring-glow-ornament-Dt49yWpi8Yg2G6645sLada.webp";
 
-type TaskStatus = "done" | "active" | "locked";
-type ViewMode = "lobby" | "detail" | "game";
+type ViewMode = "lobby" | "accept" | "detail" | "game";
 
 type TaskRing = {
   id: number;
   title: string;
-  subtitle: string;
   game: string;
+  zone: string;
   type: string;
   reward: string;
   target: number;
+  char: string;
 };
 
 const ringPlan: TaskRing[] = [
-  {
-    id: 1,
-    title: "热身环",
-    subtitle: "跑胡子 × 常玩倍场 · 完成 1 局",
-    game: "跑胡子",
-    type: "对局任务",
-    reward: "荣誉 +60",
-    target: 1,
-  },
-  {
-    id: 2,
-    title: "进阶环",
-    subtitle: "字牌馆 · 今日打两把",
-    game: "字牌馆",
-    type: "特色任务",
-    reward: "聚宝盆礼包 + 免扣发财券",
-    target: 2,
-  },
-  {
-    id: 3,
-    title: "倍场环",
-    subtitle: "跑胡子 × 升倍场 · 完成 2 局",
-    game: "跑胡子升倍场",
-    type: "倍场任务",
-    reward: "荣誉 ×1.5",
-    target: 2,
-  },
-  {
-    id: 4,
-    title: "探索环",
-    subtitle: "三打哈 · 完成 1 局",
-    game: "三打哈",
-    type: "跨游戏体验",
-    reward: "探索宝箱",
-    target: 1,
-  },
-  {
-    id: 5,
-    title: "挑战环",
-    subtitle: "自由选择 × 常玩倍场 · 赢 1 局",
-    game: "自由选择",
-    type: "挑战任务",
-    reward: "福运大满贯箱",
-    target: 1,
-  },
+  { id: 1, title: "初露锋芒", game: "跑胡子", zone: "新手区",   type: "热身环", reward: "荣誉经验 +60",   target: 1, char: "福" },
+  { id: 2, title: "步步高升", game: "跑胡子", zone: "新手区",   type: "进阶环", reward: "荣誉经验 +120",  target: 1, char: "運" },
+  { id: 3, title: "金环加身", game: "跑胡子", zone: "高手入门", type: "倍场环", reward: "荣誉经验 ×1.5",  target: 1, char: "發" },
+  { id: 4, title: "大展宏图", game: "三打哈", zone: "跨游戏",   type: "探索环", reward: "探索宝箱",       target: 1, char: "光" },
+  { id: 5, title: "满载而归", game: "跑胡子", zone: "高手入门", type: "挑战环", reward: "福运大满贯箱",    target: 1, char: "财" },
 ];
 
-const initialProgressMap = { 1: 1, 2: 0, 3: 0, 4: 0, 5: 0 } satisfies Record<number, number>;
+const alternativeTasks: Record<number, Pick<TaskRing, "game" | "zone" | "target" | "reward">> = {
+  1: { game: "三打哈",   zone: "休闲馆",   target: 1, reward: "荣誉 +40" },
+  2: { game: "跑得快",   zone: "常玩区",   target: 1, reward: "免扣发财券 ×1" },
+  3: { game: "字牌馆",   zone: "积分赛",   target: 3, reward: "荣誉 ×1.2" },
+  4: { game: "跑胡子",   zone: "常玩倍场", target: 2, reward: "探索宝箱 ×2" },
+  5: { game: "三打哈",   zone: "高手区",   target: 2, reward: "稀有礼包" },
+};
 
-function getRingStatus(id: number, activeRingId: number, progressMap: Record<number, number>): TaskStatus {
-  const ring = ringPlan.find((item) => item.id === id);
-  if (!ring) return "locked";
-  if (progressMap[id] >= ring.target) return "done";
-  if (id === activeRingId) return "active";
-  return id < activeRingId ? "done" : "locked";
+const grandPrizeRewards = [
+  { icon: "🧠", name: "悟性",      desc: "×500",          tag: "属性提升" },
+  { icon: "👘", name: "限定旗袍",   desc: "永久装扮",       tag: "限定" },
+  { icon: "🎟️", name: "代金券",    desc: "×5（面值10元）",  tag: "可充值" },
+  { icon: "🪙", name: "金币",      desc: "×2000",         tag: "通用货币" },
+  { icon: "🖼️", name: "特效头像框", desc: "30天",          tag: "限时" },
+  { icon: "🎁", name: "惊喜礼包",   desc: "随机稀有道具",    tag: "随机" },
+];
+
+const BEAD_ANGLES = [90, 18, 306, 234, 162];
+
+function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
 }
 
-function StepBadge({ status, index }: { status: TaskStatus; index: number }) {
-  if (status === "done") {
-    return (
-      <div className="prototype-step-badge prototype-step-badge-done">
-        <CheckCircle2 className="h-5 w-5" />
-      </div>
-    );
-  }
-
-  if (status === "active") {
-    return <div className="prototype-step-badge prototype-step-badge-active">{index}</div>;
-  }
+function BeadRing({
+  activeRingId,
+  focusedRingId,
+  progressMap,
+  effectiveRings,
+  onBeadClick,
+}: {
+  activeRingId: number;
+  focusedRingId: number;
+  progressMap: Record<number, number>;
+  effectiveRings: TaskRing[];
+  onBeadClick?: (ringId: number) => void;
+}) {
+  const size = 230, cx = size / 2, cy = size / 2, r = 89, beadSize = 68;
 
   return (
-    <div className="prototype-step-badge prototype-step-badge-locked">
-      <Circle className="h-4 w-4" />
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <img src="/ring.png" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+      {effectiveRings.map((ring, i) => {
+        const pos      = polarToXY(cx, cy, r, BEAD_ANGLES[i]);
+        const isDone   = progressMap[ring.id] >= ring.target;
+        const isActive = ring.id === activeRingId && !isDone;
+        const isFocused = ring.id === focusedRingId;
+        return (
+          <div
+            key={ring.id}
+            className={`bead-node ${isDone ? "bead-done" : isActive ? "bead-active" : "bead-locked"} ${isFocused ? "bead-focused" : ""}`}
+            style={{ position: "absolute", left: pos.x, top: pos.y, width: beadSize, height: beadSize, transform: "translate(-50%,-50%)", cursor: "pointer" }}
+            onClick={() => onBeadClick?.(ring.id)}
+          >
+            <img src="/bead.png" alt="" className="bead-img" />
+            <span className="bead-label">{isDone ? "✔" : isActive ? ring.id : "🔒"}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+const initialProgressMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } satisfies Record<number, number>;
+
 export default function Home() {
   const [view, setView] = useState<ViewMode>("lobby");
-  const [activeRingId, setActiveRingId] = useState(2);
+  const [activeRingId, setActiveRingId]   = useState(1); // 当前进行中的环（自动推进）
+  const [focusedRingId, setFocusedRingId] = useState(1); // 珠子点击查看的环
   const [progressMap, setProgressMap] = useState<Record<number, number>>(initialProgressMap);
   const [showRewardBurst, setShowRewardBurst] = useState(false);
-  const [showDetailOverlay, setShowDetailOverlay] = useState(false);
+  const [lastCompletedRingId, setLastCompletedRingId] = useState<number | null>(null);
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [replacedRings, setReplacedRings] = useState<Record<number, Pick<TaskRing, "game" | "zone" | "target" | "reward">>>({});
+  const [showGrandPrizeModal, setShowGrandPrizeModal] = useState(false);
 
-  const activeRing = ringPlan.find((item) => item.id === activeRingId) ?? ringPlan[1];
-  const finishedCount = useMemo(
-    () => ringPlan.filter((item) => progressMap[item.id] >= item.target).length,
-    [progressMap],
-  );
-  const totalProgress = (finishedCount / ringPlan.length) * 100;
-  const currentRingProgress = Math.min(
-    100,
-    (progressMap[activeRing.id] / activeRing.target) * 100,
+  const effectiveRings: TaskRing[] = ringPlan.map((ring) =>
+    replacedRings[ring.id] ? { ...ring, ...replacedRings[ring.id] } : ring
   );
 
+  // 查看面板显示 focusedRing，但"去完成"只对 activeRing 开放
+  const focusedRing = effectiveRings.find((r) => r.id === focusedRingId) ?? effectiveRings[0];
+  const activeRing  = effectiveRings.find((r) => r.id === activeRingId)  ?? effectiveRings[0];
+  const focusedIsDone   = progressMap[focusedRing.id] >= focusedRing.target;
+  const focusedIsLocked = focusedRing.id > activeRingId;
+  const canGoComplete   = focusedRingId === activeRingId && !focusedIsDone;
+
+  const currentRingProgress = Math.min(100, (progressMap[activeRing.id] / activeRing.target) * 100);
+  const allDone = effectiveRings.every((r) => (progressMap[r.id] ?? 0) >= r.target);
+  const completedCount = effectiveRings.filter((r) => (progressMap[r.id] ?? 0) >= r.target).length;
+  const replacementPreview = alternativeTasks[focusedRingId];
+
+  // 完成一环后，focusedRingId 跟随 activeRingId
   useEffect(() => {
-    if (view === "detail") {
-      const timer = window.setTimeout(() => setShowDetailOverlay(true), 120);
-      return () => window.clearTimeout(timer);
-    }
-
-    setShowDetailOverlay(false);
-  }, [view]);
+    setFocusedRingId(activeRingId);
+  }, [activeRingId]);
 
   useEffect(() => {
     if (!showRewardBurst) return;
-
-    const timer = window.setTimeout(() => {
-      setShowRewardBurst(false);
-    }, 2200);
-
+    const timer = window.setTimeout(() => setShowRewardBurst(false), 2500);
     return () => window.clearTimeout(timer);
   }, [showRewardBurst]);
 
-  const handleOpenTaskDetail = () => {
-    setView("detail");
-    toast("已展开任务弹窗", {
-      description: "当前为第 2 环，可查看 1-5 环步骤并前往完成。",
-    });
-  };
-
-  const handleBackToLobby = () => {
-    setView("lobby");
-  };
+  const handleOpenAccept  = () => setView("accept");
+  const handleBackToLobby = () => setView("lobby");
+  const handleAcceptTask  = () => setView("detail");
 
   const handleGoComplete = () => {
     setView("game");
-    toast("模拟进入游戏", {
-      description: `当前任务：${activeRing.subtitle}`,
-    });
+  };
+
+  const handleBeadClick = (ringId: number) => setFocusedRingId(ringId);
+
+  const handleRestart = () => {
+    setProgressMap(initialProgressMap);
+    setActiveRingId(1);
+    setFocusedRingId(1);
+    setLastCompletedRingId(null);
+  };
+
+  const handleConfirmReplace = () => {
+    const alt = replacementPreview;
+    setReplacedRings((prev) => ({ ...prev, [focusedRingId]: alt }));
+    setProgressMap((prev) => ({ ...prev, [focusedRingId]: 0 }));
+    setShowReplaceModal(false);
   };
 
   const handleSimulateRound = () => {
-    const ringId = activeRing.id;
+    const ringId     = activeRing.id;
     const ringTarget = activeRing.target;
-    const ringTitle = activeRing.title;
-    const nextRing = ringPlan.find((item) => item.id === ringId + 1);
+    const nextRing   = effectiveRings.find((r) => r.id === ringId + 1);
 
     setProgressMap((prev) => {
       const currentValue = prev[ringId];
-      if (currentValue >= ringTarget) {
-        return prev;
-      }
-
+      if (currentValue >= ringTarget) return prev;
       const nextValue = Math.min(ringTarget, currentValue + 1);
-      const nextState = {
-        ...prev,
-        [ringId]: nextValue,
-      };
+      const nextState = { ...prev, [ringId]: nextValue };
 
       if (nextValue < ringTarget) {
-        queueMicrotask(() => {
-          toast("任务进度已更新", {
-            description: `${ringTitle}：${nextValue}/${ringTarget}`,
-          });
-        });
         return nextState;
       }
 
       queueMicrotask(() => {
-        if (nextRing) {
-          setActiveRingId(nextRing.id);
-        }
+        setLastCompletedRingId(ringId);
+        if (nextRing) setActiveRingId(nextRing.id);
         setShowRewardBurst(true);
-        toast.success(`第 ${ringId} 环完成`, {
-          description: nextRing
-            ? `已解锁第 ${nextRing.id} 环，轮进度更新为 ${Math.min(ringId, 5)}/5。`
-            : "恭喜完成整轮任务。",
-        });
       });
-
       return nextState;
     });
   };
 
-  const statusText =
-    finishedCount >= ringPlan.length
-      ? "本轮 5 环已全部完成，可领取轮终大奖。"
-      : view === "game"
-        ? `正在模拟完成：${activeRing.subtitle}`
-        : `当前激活：第 ${activeRingId} 环 · ${activeRing.title}`;
+  const completedRing      = lastCompletedRingId ? effectiveRings.find((r) => r.id === lastCompletedRingId) : null;
+  const nextAfterCompleted = lastCompletedRingId ? effectiveRings.find((r) => r.id === lastCompletedRingId + 1) : null;
 
   return (
-    <div
-      className="min-h-screen overflow-hidden bg-background text-foreground"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(15, 7, 7, 0.28), rgba(15, 7, 7, 0.82)), url(${mainStageBackground})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
+    <div className="min-h-screen overflow-hidden bg-neutral-900 text-foreground">
       <div className="prototype-noise" />
       <main className="prototype-stage-shell">
-        <section className="prototype-intro-panel">
-          <div className="prototype-kicker">
-            <Sparkles className="h-4 w-4" />
-            环式任务高保真交互原型
-          </div>
-          <h1 className="prototype-title">福运盘串环任务</h1>
-          <p className="prototype-description">
-            该原型严格使用你提供的两张界面图作为核心视觉资产：大厅页展示常驻挂件，任务详情页保留原始设计氛围，并加入可点击、可模拟完成、可实时刷新状态的交互逻辑。
-          </p>
-
-          <div className="prototype-highlight-grid">
-            <div className="prototype-highlight-card">
-              <span>原型路径</span>
-              <strong>大厅挂件 → 展开弹窗 → 去完成 → 完成反馈 → 更新进度</strong>
-            </div>
-            <div className="prototype-highlight-card">
-              <span>当前状态</span>
-              <strong>{statusText}</strong>
-            </div>
-          </div>
-
-          <div className="prototype-step-legend">
-            {ringPlan.map((ring) => {
-              const status = getRingStatus(ring.id, activeRingId, progressMap);
-              return (
-                <div key={ring.id} className={`prototype-step-legend-item status-${status}`}>
-                  <StepBadge status={status} index={ring.id} />
-                  <div>
-                    <p>第 {ring.id} 环</p>
-                    <strong>{ring.title}</strong>
-                    <span>{ring.subtitle}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
         <section className="prototype-phone-stage">
           <div className="prototype-phone-frame">
             <div className="prototype-phone-inner">
-              <div className="prototype-phone-status">
-                <div>
-                  <span>今日轮进度</span>
-                  <strong>
-                    {finishedCount}/{ringPlan.length}
-                  </strong>
-                </div>
-                <div className="prototype-status-pills">
-                  <span className="prototype-pill">
-                    <Coins className="h-3.5 w-3.5" /> 福气值 Lv.3
-                  </span>
-                  <span className="prototype-pill">
-                    <Star className="h-3.5 w-3.5" /> Lv.4
-                  </span>
-                </div>
-              </div>
-
-              <div className="prototype-total-progress">
-                <div className="prototype-total-progress-bar">
-                  <motion.div
-                    className="prototype-total-progress-fill"
-                    initial={false}
-                    animate={{ width: `${totalProgress}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 18 }}
-                  />
-                </div>
-                <span>{Math.round(totalProgress)}%</span>
-              </div>
-
               <AnimatePresence mode="wait">
-                {view === "lobby" && (
-                  <motion.div
-                    key="lobby"
-                    className="prototype-screen prototype-screen-lobby"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.32 }}
-                  >
-                    <div className="prototype-screen-topline">大厅常驻挂件</div>
-                    <div className="prototype-pendant-wrap">
-                      <img src={glowOrnament} alt="挂件光效" className="prototype-pendant-glow" />
-                      <button
-                        type="button"
-                        onClick={handleOpenTaskDetail}
-                        className="prototype-pendant-button"
-                        aria-label="点击挂件展开任务弹窗"
-                      >
-                        <img src={lobbyPendantImage} alt="福运盘挂件" className="prototype-pendant-image" />
-                        <div className="prototype-pendant-pulse" />
-                      </button>
-                    </div>
 
-                    <div className="prototype-lobby-card">
-                      <div>
-                        <span>大厅领取任务按钮</span>
-                        <strong>点击挂件展开任务弹窗</strong>
+                {/* ── 大厅 ── */}
+                {view === "lobby" && (
+                  <motion.div key="lobby" className="prototype-screen prototype-screen-lobby"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.28 }}>
+                    <div className="lobby-sidebar-pendant">
+                      <div className="lobby-pendant-entry">
+                        <img src={glowOrnament} alt="" className="lobby-pendant-glow" />
+                        <button type="button" onClick={handleOpenAccept} className="lobby-pendant-btn" aria-label="点击挂件展开任务弹窗">
+                          <img src={lobbyPendantImage} alt="福运盘挂件" className="lobby-pendant-img" />
+                          <div className="pendant-guide-ring" />
+                          <div className="pendant-guide-ring pendant-guide-ring-2" />
+                        </button>
                       </div>
-                      <Button className="prototype-gold-button" onClick={handleOpenTaskDetail}>
-                        领取今日任务
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
+                      <div className="lobby-pendant-label">福运任务</div>
                     </div>
                   </motion.div>
                 )}
 
-                {view === "detail" && (
-                  <motion.div
-                    key="detail"
-                    className="prototype-screen prototype-screen-detail"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.32 }}
-                  >
-                    <div className="prototype-reference-wrap">
-                      <img src={detailReferenceImage} alt="任务详情设计参考图" className="prototype-reference-image" />
-                      <div className="prototype-reference-mask" />
-                      <div className="prototype-reference-header">
-                        <Button variant="ghost" className="prototype-ghost-button" onClick={handleBackToLobby}>
-                          <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                        <div>
-                          <span>任务详情界面</span>
-                          <strong>福运盘串环（第 {activeRingId} 环）</strong>
-                        </div>
-                        <Button variant="ghost" className="prototype-ghost-button" onClick={handleBackToLobby}>
-                          <X className="h-4 w-4" />
-                        </Button>
+                {/* ── 领取任务 ── */}
+                {view === "accept" && (
+                  <motion.div key="accept" className="prototype-screen accept-screen-wrapper"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.28 }}>
+                    <div className="accept-card">
+                      <button className="accept-close-btn" onClick={handleBackToLobby}><X className="h-4 w-4" /></button>
+
+                      <div className="accept-pendant-wrap">
+                        <img src={glowOrnament} alt="" className="accept-pendant-glow" />
+                        <img src={lobbyPendantImage} alt="福运盘挂件" className="accept-pendant-img" />
                       </div>
 
-                      <motion.div
-                        className="prototype-detail-overlay"
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: showDetailOverlay ? 1 : 0, y: showDetailOverlay ? 0 : 12 }}
-                        transition={{ duration: 0.28, ease: "easeOut" }}
-                      >
-                        <div className="prototype-current-ring-card">
-                          <div>
-                            <span>当前任务</span>
-                            <strong>{activeRing.subtitle}</strong>
-                            <p>
-                              目标进度 {progressMap[activeRing.id]}/{activeRing.target} · 奖励 {activeRing.reward}
-                            </p>
+                      <div className="accept-title">🧧 福运任务</div>
+                      <div className="accept-desc">完成 5 环连线任务，凝聚万千福运</div>
+
+                      <div className="accept-rules">
+                        <div className="accept-rule-item">
+                          <div className="accept-rule-icon-wrap">🎯</div>
+                          <span>5 环任务</span>
+                        </div>
+                        <div className="accept-rule-connector">• • •</div>
+                        <div className="accept-rule-item">
+                          <div className="accept-rule-icon-wrap">🔒</div>
+                          <span>顺序解锁</span>
+                        </div>
+                        <div className="accept-rule-connector">• • •</div>
+                        <div className="accept-rule-item">
+                          <div className="accept-rule-icon-wrap">🎁</div>
+                          <span>大满贯箱</span>
+                        </div>
+                      </div>
+
+                      <div className="accept-btn-group">
+                        <Button className="prototype-gold-button prototype-large-button" onClick={handleAcceptTask}>
+                          立即领取
+                        </Button>
+                        <Button variant="secondary" className="prototype-secondary-button" onClick={handleBackToLobby}>
+                          下次再说
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── 任务详情 ── */}
+                {view === "detail" && (
+                  <motion.div key="detail" className="prototype-screen task-detail-screen"
+                    initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.28 }}>
+
+                    <div className="task-detail-panel">
+                    <div className="task-detail-header">
+                      <div className="task-detail-header-side" />
+                      <h2 className="task-detail-title">🏮 福运环任务 🏮</h2>
+                      <div className="task-detail-header-side task-detail-header-btns">
+                        <button className="task-icon-btn" onClick={handleBackToLobby}><X className="h-4 w-4" /></button>
+                        {/* 替换按钮：仅当聚焦环是当前未完成的 activeRing 时才可用 */}
+                        <button
+                          className="task-icon-btn"
+                          onClick={() => setShowReplaceModal(true)}
+                          disabled={focusedRingId !== activeRingId || focusedIsDone}
+                          title={focusedRingId !== activeRingId || focusedIsDone ? "只能替换当前进行中的环" : "替换本环任务"}
+                          style={{ opacity: (focusedRingId !== activeRingId || focusedIsDone) ? 0.35 : 1, cursor: (focusedRingId !== activeRingId || focusedIsDone) ? "not-allowed" : "pointer" }}
+                        >
+                          <RotateCw className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 大奖锚点条 */}
+                    <button
+                      className={`prize-anchor${allDone ? " prize-anchor-done" : ""}`}
+                      onClick={() => setShowGrandPrizeModal(true)}
+                    >
+                      <span className="prize-anchor-icon">🏆</span>
+                      <div className="prize-anchor-info">
+                        <span className="prize-anchor-name">福运大满贯箱</span>
+                        <span className="prize-anchor-progress">
+                          {allDone ? "全部完成！点击领取 🎊" : `已完成 ${completedCount} / 5 环`}
+                        </span>
+                      </div>
+                      <div className="prize-anchor-rewards">
+                        <div className="prize-reward-chip"><span>⭐</span><span>荣誉经验</span></div>
+                        <div className="prize-reward-chip"><span>🪙</span><span>金豆豆</span></div>
+                        <div className="prize-reward-chip"><span>🎁</span><span>限定装扮</span></div>
+                      </div>
+                      <span className="prize-anchor-arrow">›</span>
+                    </button>
+
+                    <div className="task-detail-body">
+                      <div className="task-detail-left">
+                        <BeadRing
+                          activeRingId={activeRingId}
+                          focusedRingId={focusedRingId}
+                          progressMap={progressMap}
+                          effectiveRings={effectiveRings}
+                          onBeadClick={handleBeadClick}
+                        />
+                      </div>
+
+                      <div className="task-detail-right">
+                        <div className="task-desc-card">
+                          <div style={{ marginBottom: "0.15rem" }}>
+                            <span className="task-desc-badge">第 {focusedRing.id} 环 · {focusedRing.title}</span>
                           </div>
-                          <Button className="prototype-gold-button" onClick={handleGoComplete}>
+                          <div className="task-desc-title">【{focusedRing.game}】{focusedRing.zone !== "跨游戏" ? focusedRing.zone : ""}</div>
+                          <div className="task-desc-progress">
+                            完成 {focusedRing.target} 局（{progressMap[focusedRing.id]}/{focusedRing.target}）
+                          </div>
+                          <div className="task-desc-reward">
+                            <span>奖励</span>
+                            <strong>{focusedRing.reward}</strong>
+                          </div>
+                        </div>
+
+                        {/* 去完成按钮：根据状态显示不同文案，用 disabled 属性控制 */}
+                        {focusedIsDone ? (
+                          <Button className="go-play-btn go-play-done" disabled>✓ 本环已完成</Button>
+                        ) : focusedIsLocked ? (
+                          <Button className="go-play-btn go-play-locked" disabled>🔒 请先完成第 {activeRingId} 环</Button>
+                        ) : (
+                          <Button className="go-play-btn" disabled={!canGoComplete} onClick={handleGoComplete}>
                             去完成
                           </Button>
-                        </div>
+                        )}
 
-                        <div className="prototype-detail-progress-card">
-                          <div className="prototype-detail-progress-head">
-                            <div>
-                              <span>1-5 环清晰步骤</span>
-                              <strong>本轮任务进度</strong>
-                            </div>
-                            <div className="prototype-mini-total">{finishedCount}/5</div>
-                          </div>
-                          <div className="prototype-detail-progress-bar">
-                            <motion.div
-                              className="prototype-detail-progress-fill"
-                              initial={false}
-                              animate={{ width: `${totalProgress}%` }}
-                              transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                            />
-                          </div>
-
-                          <div className="prototype-step-list">
-                            {ringPlan.map((ring) => {
-                              const status = getRingStatus(ring.id, activeRingId, progressMap);
-                              const progress = progressMap[ring.id];
-                              return (
-                                <div key={ring.id} className={`prototype-step-card status-${status}`}>
-                                  <StepBadge status={status} index={ring.id} />
-                                  <div className="prototype-step-copy">
-                                    <div className="prototype-step-headline">
-                                      <strong>
-                                        第 {ring.id} 环 · {ring.title}
-                                      </strong>
-                                      <span>{status === "done" ? "已完成" : status === "active" ? "进行中" : "待解锁"}</span>
-                                    </div>
-                                    <p>{ring.subtitle}</p>
-                                    <div className="prototype-step-meta">
-                                      <span>{ring.type}</span>
-                                      <span>
-                                        {progress}/{ring.target}
-                                      </span>
-                                      <span>{ring.reward}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {view === "game" && (
-                  <motion.div
-                    key="game"
-                    className="prototype-screen prototype-screen-game"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.32 }}
-                    style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(30, 11, 10, 0.16), rgba(30, 11, 10, 0.82)), url(${gameplayBackground})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }}
-                  >
-                    <div className="prototype-screen-topline">模拟进入游戏</div>
-                    <div className="prototype-gameplay-head">
-                      <div>
-                        <span>当前任务</span>
-                        <strong>{activeRing.subtitle}</strong>
-                      </div>
-                      <Button variant="ghost" className="prototype-ghost-button" onClick={() => setView("detail")}>
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="prototype-gameplay-card">
-                      <div className="prototype-combat-chip">
-                        <Swords className="h-4 w-4" />
-                        字牌馆对局模拟中
-                      </div>
-                      <h2>完成任务时同步反馈状态变化</h2>
-                      <p>
-                        点击下方按钮可模拟完成一局。到达目标后会立即出现完成提示、轮进度更新，并解锁下一环。
-                      </p>
-
-                      <div className="prototype-ring-progress-panel">
-                        <div className="prototype-ring-progress-top">
-                          <span>第 {activeRing.id} 环进度</span>
-                          <strong>
-                            {progressMap[activeRing.id]}/{activeRing.target}
-                          </strong>
-                        </div>
-                        <div className="prototype-detail-progress-bar large">
-                          <motion.div
-                            className="prototype-detail-progress-fill"
-                            initial={false}
-                            animate={{ width: `${currentRingProgress}%` }}
-                            transition={{ type: "spring", stiffness: 120, damping: 18 }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="prototype-gameplay-actions">
-                        <Button className="prototype-gold-button prototype-large-button" onClick={handleSimulateRound}>
-                          完成一局
-                        </Button>
-                        <Button variant="secondary" className="prototype-secondary-button" onClick={() => setView("detail")}>
-                          返回任务详情
-                        </Button>
                       </div>
                     </div>
+                    </div>{/* /task-detail-panel */}
 
+                    {/* 替换任务弹窗 */}
                     <AnimatePresence>
-                      {showRewardBurst && (
-                        <motion.div
-                          className="prototype-success-burst"
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.96 }}
-                        >
-                          <img src={glowOrnament} alt="完成特效" className="prototype-success-glow" />
-                          <div className="prototype-success-card">
-                            <Trophy className="h-8 w-8" />
-                            <div>
-                              <strong>任务完成</strong>
-                              <p>第 2 环已完成，轮进度已更新，并已解锁第 3 环。</p>
+                      {showReplaceModal && (
+                        <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          onClick={() => setShowReplaceModal(false)}>
+                          <motion.div className="modal-card"
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                            onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-title">替换任务</div>
+                            <div className="modal-cost">
+                              <Coins className="h-4 w-4" style={{ color: "#f5c842" }} />
+                              <span>消耗 <strong>10 金币</strong> 替换本环任务</span>
                             </div>
-                          </div>
+                            <div className="replace-compare">
+                              <div className="replace-task-block replace-task-old">
+                                <div className="replace-task-tag">当前</div>
+                                <div className="replace-task-name">【{focusedRing.game}】{focusedRing.zone}</div>
+                                <div className="replace-task-sub">完成 {focusedRing.target} 局</div>
+                              </div>
+                              <div className="replace-arrow">→</div>
+                              <div className="replace-task-block replace-task-new">
+                                <div className="replace-task-tag new">替换</div>
+                                <div className="replace-task-name">【{replacementPreview.game}】{replacementPreview.zone}</div>
+                                <div className="replace-task-sub">完成 {replacementPreview.target} 局</div>
+                              </div>
+                            </div>
+                            <div className="modal-actions">
+                              <Button className="prototype-gold-button" onClick={handleConfirmReplace}>确认替换（-10 金币）</Button>
+                              <Button variant="secondary" className="prototype-secondary-button" onClick={() => setShowReplaceModal(false)}>取消</Button>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* 大奖预览弹窗 */}
+                    <AnimatePresence>
+                      {showGrandPrizeModal && (
+                        <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          onClick={() => setShowGrandPrizeModal(false)}>
+                          <motion.div className="modal-card modal-card-wide"
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                            onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-title">🎁 福运大满贯箱</div>
+                            <div className="modal-subtitle">完成全部 5 环即可领取</div>
+                            <div className="grand-prize-grid">
+                              {grandPrizeRewards.map((item) => (
+                                <div key={item.name} className="grand-prize-item">
+                                  <div className="grand-prize-icon">{item.icon}</div>
+                                  <div className="grand-prize-item-name">{item.name}</div>
+                                  <div className="grand-prize-item-desc">{item.desc}</div>
+                                  <div className="grand-prize-item-tag">{item.tag}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <Button variant="secondary" className="prototype-secondary-button" style={{ width: "100%", marginTop: "0.5rem" }} onClick={() => setShowGrandPrizeModal(false)}>关闭</Button>
+                          </motion.div>
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </motion.div>
                 )}
+
+                {/* ── 游戏模拟 ── */}
+                {view === "game" && (
+                  <motion.div key="game" className="prototype-screen prototype-screen-game"
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.32 }}>
+
+                    <div className="prototype-gameplay-panel">
+                      <div className="prototype-gameplay-card">
+                        <div className="prototype-gameplay-card-top">
+                          <div className="prototype-combat-chip">
+                            <Swords className="h-4 w-4" style={{ flexShrink: 0 }} />
+                            <div className="prototype-combat-sub">【{activeRing.game}】{activeRing.zone !== "跨游戏" ? activeRing.zone : ""} · 完成 {activeRing.target} 局</div>
+                          </div>
+                          <Button variant="ghost" className="prototype-ghost-button" onClick={() => setView("detail")}>
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="prototype-ring-progress-panel">
+                          <div className="prototype-ring-progress-top">
+                            <span>第 {activeRing.id} 环进度</span>
+                            <strong>{progressMap[activeRing.id]}/{activeRing.target}</strong>
+                          </div>
+                          <div className="prototype-detail-progress-bar large">
+                            <motion.div className="prototype-detail-progress-fill" initial={false}
+                              animate={{ width: `${currentRingProgress}%` }}
+                              transition={{ type: "spring", stiffness: 120, damping: 18 }} />
+                          </div>
+                        </div>
+                        <div className="prototype-gameplay-actions">
+                          {allDone ? (
+                            <Button className="prototype-gold-button prototype-large-button" onClick={handleRestart}>
+                              <RefreshCw className="h-4 w-4 mr-2" />重新开始新一轮
+                            </Button>
+                          ) : (
+                            <Button className="prototype-gold-button prototype-large-button" onClick={handleSimulateRound}>
+                              完成一局
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {showRewardBurst && (
+                        <motion.div className="prototype-success-burst"
+                          initial={{ opacity: 0, scale: completedRing?.id === 5 ? 0.8 : 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.96 }}
+                          transition={{ type: "spring", stiffness: completedRing?.id === 5 ? 200 : 300, damping: 22 }}>
+                          <div className={`prototype-success-card${completedRing?.id === 5 ? " prototype-success-card-grand" : ""}`}>
+                            <Trophy className={completedRing?.id === 5 ? "h-12 w-12" : "h-8 w-8"} style={{ color: "#f5c842", flexShrink: 0 }} />
+                            <div>
+                              <strong>{completedRing?.id === 5 ? "🎊 大满贯！全部完成！" : `第 ${completedRing?.id} 环完成`}</strong>
+                              <p>{nextAfterCompleted
+                                ? `已获得：${completedRing?.reward}，解锁第 ${nextAfterCompleted.id} 环`
+                                : `已获得：${completedRing?.reward}，福运大满贯箱已解锁！`}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
-          </div>
-
-          <div className="prototype-bottom-bar">
-            <div>
-              <span>大奖</span>
-              <strong>完成 5 环获得福运大满贯箱</strong>
-            </div>
-            <Gift className="h-5 w-5" />
           </div>
         </section>
       </main>
