@@ -302,7 +302,7 @@ export default function Home() {
                         </span>
                         <span className="prize-anchor-progress">
                           {allDone
-                            ? "奖励已发放 🎊 · 今日 " + completedRounds + " / 5 轮"
+                            ? `奖励已发放 🎊 · 今日 ${completedRounds + 1} / 5 轮`
                             : `本轮已完成 ${completedCount} / 5 环 · 今日 ${completedRounds} / 5 轮`}
                         </span>
                       </div>
