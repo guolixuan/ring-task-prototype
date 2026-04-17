@@ -110,6 +110,7 @@ export default function Home() {
   const [showGrandPrizeModal, setShowGrandPrizeModal] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);       // 当前第几轮
   const [completedRounds, setCompletedRounds] = useState(0); // 今日已完成轮数
+  const [hasActiveTask, setHasActiveTask] = useState(false); // 是否已领取任务
 
   const effectiveRings: TaskRing[] = ringPlan.map((ring) =>
     replacedRings[ring.id] ? { ...ring, ...replacedRings[ring.id] } : ring
@@ -138,9 +139,9 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [showRewardBurst]);
 
-  const handleOpenAccept  = () => setView("accept");
+  const handleOpenAccept  = () => hasActiveTask ? setView("detail") : setView("accept");
   const handleBackToLobby = () => setView("lobby");
-  const handleAcceptTask  = () => setView("detail");
+  const handleAcceptTask  = () => { setHasActiveTask(true); setView("detail"); };
 
   const handleGoComplete = () => {
     setView("game");
