@@ -296,14 +296,11 @@ export default function Home() {
                     >
                       <span className="prize-anchor-icon">🏆</span>
                       <div className="prize-anchor-info">
-                        <span className="prize-anchor-name">
-                          福运大满贯箱
-                          <span className="prize-anchor-round-badge">第 {currentRound} 轮</span>
-                        </span>
+                        <span className="prize-anchor-name">福运大满贯箱</span>
                         <span className="prize-anchor-progress">
                           {allDone
-                            ? `奖励已发放 🎊 · 今日 ${completedRounds + 1} / 5 轮`
-                            : `本轮已完成 ${completedCount} / 5 环 · 今日 ${completedRounds} / 5 轮`}
+                            ? `第 ${currentRound} 轮奖励已发放 🎊 · 今日 ${completedRounds + 1} / 5 轮`
+                            : `第 ${currentRound} 轮 · 已完成 ${completedCount} / 5 环 · 今日 ${completedRounds} / 5 轮`}
                         </span>
                       </div>
                       <div className="prize-anchor-rewards">
