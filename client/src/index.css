@@ -901,11 +901,26 @@
 }
 
 .prize-anchor-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.8rem;
   font-weight: 700;
   color: #ffd966;
   letter-spacing: 0.02em;
   line-height: 1.2;
+}
+
+.prize-anchor-round-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(255, 180, 50, 0.9);
+  background: rgba(255, 200, 60, 0.12);
+  border: 1px solid rgba(255, 200, 60, 0.3);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .prize-anchor-progress {

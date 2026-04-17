@@ -108,6 +108,8 @@ export default function Home() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [replacedRings, setReplacedRings] = useState<Record<number, Pick<TaskRing, "game" | "zone" | "target" | "reward">>>({});
   const [showGrandPrizeModal, setShowGrandPrizeModal] = useState(false);
+  const [currentRound, setCurrentRound] = useState(1);       // 当前第几轮
+  const [completedRounds, setCompletedRounds] = useState(0); // 今日已完成轮数
 
   const effectiveRings: TaskRing[] = ringPlan.map((ring) =>
     replacedRings[ring.id] ? { ...ring, ...replacedRings[ring.id] } : ring
@@ -147,10 +149,13 @@ export default function Home() {
   const handleBeadClick = (ringId: number) => setFocusedRingId(ringId);
 
   const handleRestart = () => {
+    setCompletedRounds((prev) => Math.min(5, prev + 1));
+    setCurrentRound((prev) => prev + 1);
     setProgressMap(initialProgressMap);
     setActiveRingId(1);
     setFocusedRingId(1);
     setLastCompletedRingId(null);
+    setReplacedRings({});
   };
 
   const handleConfirmReplace = () => {
@@ -290,9 +295,14 @@ export default function Home() {
                     >
                       <span className="prize-anchor-icon">🏆</span>
                       <div className="prize-anchor-info">
-                        <span className="prize-anchor-name">福运大满贯箱</span>
+                        <span className="prize-anchor-name">
+                          福运大满贯箱
+                          <span className="prize-anchor-round-badge">第 {currentRound} 轮</span>
+                        </span>
                         <span className="prize-anchor-progress">
-                          {allDone ? "全部完成！点击领取 🎊" : `已完成 ${completedCount} / 5 环`}
+                          {allDone
+                            ? "本轮全部完成！点击领取 🎊"
+                            : `本轮已完成 ${completedCount} / 5 环 · 今日 ${completedRounds} / 5 轮`}
                         </span>
                       </div>
                       <div className="prize-anchor-rewards">
